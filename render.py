@@ -10,25 +10,17 @@ from conference import Conference, days_left, load_conference
 
 WIDTH = 296
 HEIGHT = 152
-BOLD_FONT_PATHS = (
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    "/System/Library/Fonts/Supplemental/Arial Black.ttf",
-    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-)
-REGULAR_FONT_PATHS = (
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    "/System/Library/Fonts/Supplemental/Arial.ttf",
-    "/System/Library/Fonts/Helvetica.ttc",
-    "/Library/Fonts/Arial.ttf",
-)
-SECONDARY_GRAY = "#777777"
+BLACK = 0
+WHITE = 255
+
+_HERE = Path(__file__).parent
+FONT_REGULAR = _HERE / "fonts" / "terminus-normal.otb"
+FONT_BOLD = _HERE / "fonts" / "terminus-bold.otb"
+BITMAP_FONT_SIZES = (32, 28, 24, 22, 20, 18, 16, 14, 12)
 
 
-def _font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    for path in BOLD_FONT_PATHS if bold else REGULAR_FONT_PATHS:
-        if Path(path).exists():
-            return ImageFont.truetype(path, size=size)
-    return ImageFont.load_default()
+def _font(path: str | Path, size: int) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(str(path), size=size)
 
 
 def _fitted_font(
@@ -38,35 +30,52 @@ def _fitted_font(
     start: int,
     minimum: int,
     *,
-    bold: bool = False,
-):
-    for size in range(start, minimum - 1, -1):
-        font = _font(size, bold=bold)
+    path: str | Path = FONT_REGULAR,
+) -> ImageFont.FreeTypeFont:
+    sizes = [size for size in BITMAP_FONT_SIZES if minimum <= size <= start]
+    for size in sizes:
+        font = _font(path, size)
         box = draw.textbbox((0, 0), text, font=font)
         if box[2] - box[0] <= max_width:
             return font
-    return _font(minimum, bold=bold)
+    return _font(path, minimum)
 
 
 def _centered(
     draw: ImageDraw.ImageDraw,
     y: int,
     text: str,
-    font,
-    fill: str,
-    *,
-    stroke_width: int = 0,
+    font: ImageFont.FreeTypeFont,
 ) -> None:
     box = draw.textbbox((0, 0), text, font=font)
     width = box[2] - box[0]
-    draw.text(
-        ((WIDTH - width) / 2, y - box[1]),
-        text,
-        font=font,
-        fill=fill,
-        stroke_width=stroke_width,
-        stroke_fill=fill,
-    )
+    draw.text(((WIDTH - width) // 2, y - box[1]), text, font=font, fill=BLACK)
+
+
+def _scaled_bitmap_text(
+    text: str,
+    *,
+    path: str | Path,
+    font_size: int,
+    max_scale: int,
+    max_width: int,
+    max_height: int,
+    tracking: int = 2,
+) -> Image.Image:
+    font = _font(path, font_size)
+    probe = ImageDraw.Draw(Image.new("1", (1, 1), WHITE))
+    advances = [int(probe.textlength(character, font=font)) for character in text]
+    base_width = sum(advances) + tracking * max(0, len(text) - 1)
+    base = Image.new("1", (base_width, font_size), WHITE)
+    draw = ImageDraw.Draw(base)
+
+    x = 0
+    for character, advance in zip(text, advances):
+        draw.text((x, 0), character, font=font, fill=BLACK)
+        x += advance + tracking
+
+    scale = max(1, min(max_scale, max_width // base.width, max_height // base.height))
+    return base.resize((base.width * scale, base.height * scale), Image.Resampling.NEAREST)
 
 
 def _days_label(remaining: int) -> str:
@@ -74,32 +83,44 @@ def _days_label(remaining: int) -> str:
 
 
 def render_conference(conference: Conference, *, now=None) -> Image.Image:
-    image = Image.new("RGB", (WIDTH, HEIGHT), "white")
+    image = Image.new("1", (WIDTH, HEIGHT), WHITE)
     draw = ImageDraw.Draw(image)
 
-    name_font = _fitted_font(draw, conference.name, WIDTH - 32, start=17, minimum=12, bold=True)
-    _centered(draw, 14, conference.name, name_font, SECONDARY_GRAY)
+    name_font = _fitted_font(draw, conference.name, WIDTH - 32, start=18, minimum=12)
+    _centered(draw, 12, conference.name, name_font)
 
     remaining = days_left(conference, now=now)
     if remaining is None:
-        passed_font = _fitted_font(draw, "PASSED", WIDTH - 32, start=50, minimum=28, bold=True)
-        _centered(draw, 58, "PASSED", passed_font, "black")
-        return image
+        passed = _scaled_bitmap_text(
+            "PASSED",
+            path=FONT_BOLD,
+            font_size=28,
+            max_scale=2,
+            max_width=WIDTH - 32,
+            max_height=76,
+        )
+        image.paste(passed, ((WIDTH - passed.width) // 2, 50))
+        return image.convert("RGB")
 
-    number = str(remaining)
-    number_font = _fitted_font(draw, number, WIDTH - 32, start=78, minimum=42, bold=True)
-    number_box = draw.textbbox((0, 0), number, font=number_font)
-    number_height = number_box[3] - number_box[1]
-    number_y = 40 + max(0, (76 - number_height) // 2)
-    _centered(draw, number_y, number, number_font, "black", stroke_width=1)
+    number = _scaled_bitmap_text(
+        str(remaining),
+        path=FONT_BOLD,
+        font_size=28,
+        max_scale=3,
+        max_width=WIDTH - 32,
+        max_height=84,
+    )
+    image.paste(number, ((WIDTH - number.width) // 2, 36 + (84 - number.height) // 2))
 
-    label = _days_label(remaining)
-    label_font = _font(17, bold=True)
-    _centered(draw, 126, label, label_font, SECONDARY_GRAY)
-    return image
+    label_font = _font(FONT_REGULAR, 18)
+    _centered(draw, 128, _days_label(remaining), label_font)
+    return image.convert("RGB")
 
 
-def render_file(config_path: str | Path = "conference.yml", output_path: str | Path | None = None) -> Path:
+def render_file(
+    config_path: str | Path = "conference.yml",
+    output_path: str | Path | None = None,
+) -> Path:
     conference = load_conference(config_path)
     image = render_conference(conference)
     output = Path(output_path or os.environ.get("PREVIEW_PATH", "/tmp/conference-countdown.png"))

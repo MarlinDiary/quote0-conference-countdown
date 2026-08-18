@@ -3,6 +3,12 @@
 A deliberately minimal conference deadline display for a 296×152 Quote/0
 e-ink screen. It shows exactly one conference name and the number of days left.
 
+The display uses the same vendored [Terminus bitmap family](https://terminus-font.sourceforge.net/)
+as the AI Usage device: regular black text for the conference name and label,
+bold enlarged bitmap digits in the middle, and pure black/white pixels without
+antialiasing. The bundled fonts retain their SIL Open Font License in
+[`fonts/OFL.txt`](fonts/OFL.txt).
+
 ## Change the target conference
 
 Edit only [`conference.yml`](conference.yml):
