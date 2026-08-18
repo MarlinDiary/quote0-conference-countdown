@@ -15,7 +15,7 @@ Edit only [`conference.yml`](conference.yml):
 
 ```yaml
 name: SANER 2027
-deadline: 2026-09-25
+deadline: 2026-09-21
 ```
 
 The file accepts exactly two fields. `deadline` is interpreted as the end of
@@ -25,8 +25,10 @@ the AoE deadline occurs. The Railway worker reads the raw
 GitHub file again before every render, so committing an edit is enough even
 when Railway is not connected to the repository for automatic deployments.
 
-The initial deadline is the SANER 2027 Research Track paper submission date
-from the [official call for papers](https://conf.researchr.org/track/saner-2027/saner-2027-papers).
+The initial deadline is the SANER 2027 Research Track mandatory abstract
+submission date. It is the first required milestone; the full-paper deadline
+follows on 25 September 2026. Both dates come from the
+[official call for papers](https://conf.researchr.org/track/saner-2027/saner-2027-papers).
 
 ## Preview locally
 
