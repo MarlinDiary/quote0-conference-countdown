@@ -13,8 +13,9 @@ deadline: 2026-09-25
 ```
 
 The file accepts exactly two fields. `deadline` is interpreted as the end of
-that date in Anywhere on Earth (AoE, UTC-12). Committing an edit triggers a new
-Railway deployment when the repository is connected to Railway.
+that date in Anywhere on Earth (AoE, UTC-12). The Railway worker reads the raw
+GitHub file again before every render, so committing an edit is enough even
+when Railway is not connected to the repository for automatic deployments.
 
 The initial deadline is the SANER 2027 Research Track paper submission date
 from the [official call for papers](https://conf.researchr.org/track/saner-2027/saner-2027-papers).
@@ -43,7 +44,8 @@ Keep `QUOTE_PUSH_ENABLED=false` until the second Quote/0 has an Image API item
 in its loop. Set it to `true` after one preview and one explicit test push have
 been verified. Secrets remain in Railway and never enter `conference.yml`.
 
-The worker renders every three hours by default. Changing the GitHub file and
+The worker renders every three hours by default. It downloads and validates the
+public `conference.yml` before each render. Changing that GitHub file and
 committing it is the only normal maintenance operation.
 
 ## Verification

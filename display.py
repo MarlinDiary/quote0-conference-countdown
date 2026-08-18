@@ -4,11 +4,13 @@ import argparse
 import base64
 import os
 from pathlib import Path
+import tempfile
 import time
 
 import requests
 
 from render import render_file
+from conference import load_conference
 
 
 API_BASE = "https://dot.mindreset.tech"
@@ -18,6 +20,25 @@ TASK_KEY = os.environ.get("QUOTE_TASK_KEY", "")
 PUSH_ENABLED = os.environ.get("QUOTE_PUSH_ENABLED", "false").lower() == "true"
 UPDATE_INTERVAL = int(os.environ.get("UPDATE_INTERVAL", "10800"))
 PREVIEW_PATH = os.environ.get("PREVIEW_PATH", "/tmp/conference-countdown.png")
+CONFIG_PATH = os.environ.get("CONFERENCE_CONFIG_PATH", "conference.yml")
+CONFIG_URL = os.environ.get("CONFERENCE_CONFIG_URL", "")
+
+
+def current_config_path() -> Path:
+    if not CONFIG_URL:
+        return Path(CONFIG_PATH)
+
+    response = requests.get(CONFIG_URL, timeout=15)
+    response.raise_for_status()
+    with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False, encoding="utf-8") as handle:
+        handle.write(response.text)
+        downloaded = Path(handle.name)
+    try:
+        load_conference(downloaded)
+    except Exception:
+        downloaded.unlink(missing_ok=True)
+        raise
+    return downloaded
 
 
 def push_image(path: str | Path) -> None:
@@ -52,7 +73,12 @@ def push_image(path: str | Path) -> None:
 
 
 def run_once() -> bool:
-    output = render_file(output_path=PREVIEW_PATH)
+    config_path = current_config_path()
+    try:
+        output = render_file(config_path=config_path, output_path=PREVIEW_PATH)
+    finally:
+        if CONFIG_URL:
+            config_path.unlink(missing_ok=True)
     size = output.stat().st_size
     if not PUSH_ENABLED:
         print(f"Preview updated; Quote push disabled ({size:,} bytes)")
