@@ -13,7 +13,9 @@ deadline: 2026-09-25
 ```
 
 The file accepts exactly two fields. `deadline` is interpreted as the end of
-that date in Anywhere on Earth (AoE, UTC-12). The Railway worker reads the raw
+that date in Anywhere on Earth (AoE, UTC-12). `Days Left` is calculated using
+calendar dates in `Pacific/Auckland`, including the Auckland-local date on which
+the AoE deadline occurs. The Railway worker reads the raw
 GitHub file again before every render, so committing an edit is enough even
 when Railway is not connected to the repository for automatic deployments.
 

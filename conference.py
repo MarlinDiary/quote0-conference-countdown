@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
-import math
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import yaml
 
 
 AOE = timezone(-timedelta(hours=12), name="AoE")
+DISPLAY_TIMEZONE = ZoneInfo("Pacific/Auckland")
 ALLOWED_KEYS = {"name", "deadline"}
 
 
@@ -63,7 +64,9 @@ def days_left(conference: Conference, now: datetime | None = None) -> int | None
     if now.tzinfo is None:
         raise ValueError("now must be timezone-aware")
 
-    seconds = (conference.deadline_at - now).total_seconds()
-    if seconds < 0:
+    if now > conference.deadline_at:
         return None
-    return max(1, math.ceil(seconds / 86_400))
+
+    local_today = now.astimezone(DISPLAY_TIMEZONE).date()
+    local_deadline = conference.deadline_at.astimezone(DISPLAY_TIMEZONE).date()
+    return (local_deadline - local_today).days

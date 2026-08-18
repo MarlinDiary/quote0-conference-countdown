@@ -77,7 +77,7 @@ def render_conference(conference: Conference, *, now=None) -> Image.Image:
     image = Image.new("RGB", (WIDTH, HEIGHT), "white")
     draw = ImageDraw.Draw(image)
 
-    name_font = _fitted_font(draw, conference.name, WIDTH - 32, start=17, minimum=12)
+    name_font = _fitted_font(draw, conference.name, WIDTH - 32, start=17, minimum=12, bold=True)
     _centered(draw, 14, conference.name, name_font, SECONDARY_GRAY)
 
     remaining = days_left(conference, now=now)
@@ -94,7 +94,7 @@ def render_conference(conference: Conference, *, now=None) -> Image.Image:
     _centered(draw, number_y, number, number_font, "black", stroke_width=1)
 
     label = _days_label(remaining)
-    label_font = _font(17)
+    label_font = _font(17, bold=True)
     _centered(draw, 126, label, label_font, SECONDARY_GRAY)
     return image
 
